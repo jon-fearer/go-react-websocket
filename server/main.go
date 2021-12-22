@@ -20,7 +20,7 @@ var upgrader = websocket.Upgrader{
 	},
 }
 var db *pg.DB
-var channel <- chan pg.Notification
+var channel <-chan pg.Notification
 
 func handleMessages(w http.ResponseWriter, r *http.Request) {
 	c, err := upgrader.Upgrade(w, r, nil)
@@ -28,11 +28,15 @@ func handleMessages(w http.ResponseWriter, r *http.Request) {
 		log.Println(err)
 		return
 	}
-	defer c.Close()
+	defer func() {
+		err = c.Close()
+		if err != nil {
+			log.Println(err)
+			return
+		}
+	}()
 	for {
-		log.Println("checking channel")
 		message := <-channel
-		log.Println(message)
 		err = c.WriteMessage(websocket.TextMessage, []byte(message.Payload))
 		if err != nil {
 			log.Println(err)
@@ -49,7 +53,7 @@ func connectAndListen() {
 		Database: "message",
 	})
 	context := db.Context()
-	listener := db.Listen(context,"message_channel")
+	listener := db.Listen(context, "message_channel")
 	channel = listener.Channel()
 }
 
